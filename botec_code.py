@@ -418,7 +418,7 @@ def goto_box():
             else:
                 print("开始抱箱子")
                 if safe_action("Forwalk01", wait_time=0.5):
-                    if safe_action("NewGrabCube", wait_time=0.5):
+                    if safe_action("FixedGrabCube", wait_time=0.5):
                         if safe_action("LiftCubeUp", wait_time=0.5):  # 添加LiftCubeUp动作
                             level = "end_box"
                             box_go3(2)  # 抱着箱子前进两步

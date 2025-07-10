@@ -28,7 +28,7 @@ Debug = 0
 task_start_time = time.time()
 last_tag_seen_time = time.time()
 search_pattern_step = 0
-max_alignment_attempts = 4  # 增加到4次
+max_alignment_attempts = 2  # 增加到2次
 current_alignment_attempts = 0
 box_alignment_attempts = 0
 
@@ -135,7 +135,7 @@ def go_fast3(n):  # 快速前进三步
             break
 
 
-# 抱块前进1步，待优化，暂时同NewBoxForward1s - 保持您的NewBoxForward1s
+# 抱块前进1步
 def box_go(n):
     for i in range(0, n):
         if not safe_action("FixedBoxForward1s", wait_time=0.5):
@@ -143,28 +143,31 @@ def box_go(n):
             break
 
 
-def box_go1(n):  # 抱着箱子前进一步 - 保持您的NewBoxForward1s
+# 抱着箱子前进一步
+def box_go1(n):
     for i in range(0, n):
         if not safe_action("FixedBoxForward1s", wait_time=0.5):
             print("抱箱前进动作失败，跳过")
             break
 
 
-def box_go2(n):  # 抱着箱子前进两步 - 保持您的NewBoxForward2s
+# 抱着箱子前进两步
+def box_go2(n):
     for i in range(0, n):
         if not safe_action("FixedBoxForward2s", wait_time=0.5):
             print("抱箱前进动作失败，跳过")
             break
 
 
-def box_go3(n):  # 抱着箱子前进三步 - 保持您的NewBoxForward3s
+# 抱着箱子前进三步
+def box_go3(n):
     for i in range(0, n):
         if not safe_action("NewBoxForward3s", wait_time=0.5):
             print("抱箱前进动作失败，跳过")
             break
 
 
-# 侧移#
+# 侧移
 def L_move1(n):  # 左侧移
     for i in range(0, n):
         if not safe_action("Left02move", wait_time=0.5):
@@ -462,31 +465,36 @@ def goto_box():
             return
 
         # 原有的对位逻辑
-        if chest_circle_x < 275:
-            print("正在左侧移", chest_circle_x)
-            safe_action("Left3move", wait_time=0.5)
-            box_alignment_attempts += 1  # 增加计数
-        elif chest_circle_x < 295:
-            print("正在左侧移", chest_circle_x)
-            safe_action("Left02move", wait_time=0.5)
-            box_alignment_attempts += 1  # 增加计数
-        elif chest_circle_x > 365:
-            print("正在右侧移", chest_circle_x)
-            safe_action("Right3move", wait_time=0.5)
-            box_alignment_attempts += 1  # 增加计数
-        elif chest_circle_x > 345:
-            print("正在右侧移", chest_circle_x)
-            safe_action("Right02move", wait_time=0.5)
-            box_alignment_attempts += 1  # 增加计数
+        if chest_circle_y < 300:
+            print("前进", chest_circle_y)
+            safe_action("FastForward1s", wait_time=0.5)
+            # 前后移动不计入侧移计数
+        elif chest_circle_y >= 380:
+            print("后退", chest_circle_y)
+            safe_action("Back1Run", wait_time=0.5)
+            # 前后移动不计入侧移计数
+
         else:
-            if chest_circle_y < 300:
-                print("前进", chest_circle_y)
-                safe_action("FastForward1s", wait_time=0.5)
-                # 前后移动不计入侧移计数
-            elif chest_circle_y >= 380:
-                print("后退", chest_circle_y)
-                safe_action("Back1Run", wait_time=0.5)
-                # 前后移动不计入侧移计数
+            if chest_circle_x < 275:
+                print("正在左侧移", chest_circle_x)
+                safe_action("Left3move", wait_time=0.5)
+                box_alignment_attempts += 1  # 增加计数
+
+            elif chest_circle_x < 295:
+                print("正在左侧移", chest_circle_x)
+                safe_action("Left02move", wait_time=0.5)
+                box_alignment_attempts += 1  # 增加计数
+
+            elif chest_circle_x > 365:
+                print("正在右侧移", chest_circle_x)
+                safe_action("Right3move", wait_time=0.5)
+                box_alignment_attempts += 1  # 增加计数
+
+            elif chest_circle_x > 345:
+                print("正在右侧移", chest_circle_x)
+                safe_action("Right02move", wait_time=0.5)
+                box_alignment_attempts += 1  # 增加计数
+
             else:
                 print("开始抱箱子")
                 if safe_action("Forwalk01", wait_time=0.5):
@@ -511,53 +519,53 @@ def search_for_tag():
     try:
         # 搜索模式：左右扫描 + 前后调整
         if search_pattern_step == 0:
-            print("搜索模式：左转寻找tag")
+            print("搜索模式：右转寻找tag")
             if step == 1:
-                BoxL_turn1(1)
+                BoxR_turn2(1)
             else:
-                L_turn1(1)
+                R_turn2(1)
             search_pattern_step = 1
         elif search_pattern_step == 1:
             print("搜索模式：右转寻找tag")
             if step == 1:
-                BoxR_turn1(2)
+                BoxR_turn2(2)
             else:
-                R_turn1(2)
+                R_turn2(2)
             search_pattern_step = 2
         elif search_pattern_step == 2:
-            print("搜索模式：回到中心位置")
+            print("搜索模式：右转寻找tag")
             if step == 1:
-                BoxL_turn1(1)
+                BoxR_turn2(1)
             else:
-                L_turn1(1)
+                R_turn1(1)
             search_pattern_step = 3
         elif search_pattern_step == 3:
             print("搜索模式：前进寻找tag")
             if step == 1:
-                box_go2(1)
+                box_go3(1)
             else:
                 go_fast1(1)
             search_pattern_step = 4
         elif search_pattern_step == 4:
             print("搜索模式：左侧移寻找tag")
             if step == 1:
-                BoxL_move1(1)
+                BoxL_move2(1)
             else:
-                L_move1(1)
+                L_move2(1)
             search_pattern_step = 5
         elif search_pattern_step == 5:
             print("搜索模式：右侧移寻找tag")
             if step == 1:
-                BoxR_move1(2)
+                BoxR_move2(2)
             else:
-                R_move1(2)
+                R_move2(2)
             search_pattern_step = 6
         else:
             print("搜索模式：回到中心位置，重置搜索")
             if step == 1:
-                BoxL_move1(1)
+                BoxL_move2(1)
             else:
-                L_move1(1)
+                L_move2(1)
             search_pattern_step = 0
     except Exception as e:
         print(f"搜索tag过程出错: {e}")
@@ -579,9 +587,9 @@ def turn_to_tag(dis_x, dis_y, theta, x_offset=0, y_offset=0, theta_offset=0,
     print("x_error:", x_error, "y_error:", y_error, "theta_error:", theta_error)
     print("对位尝试次数:", current_alignment_attempts)
 
-    # 检查是否超过最大尝试次数（4次）
+    # 检查是否超过最大尝试次数（2次）
     if current_alignment_attempts >= max_alignment_attempts:
-        print("对位尝试次数达到4次，判定为已对准")
+        print("对位尝试次数达到2次，判定为已对准")
         is_turn_done = True
         current_alignment_attempts = 0
         return is_turn_done
@@ -744,31 +752,28 @@ if __name__ == '__main__':
                             print("长时间未检测到tag，启动智能搜索")
                             # search_for_tag()
 
-                            if current_time - last_tag_seen_time > 3.0:
-                                print("长时间未检测到tag，启动智能搜索")
-
-                                # 特殊处理：在tag1、3、5处长时间找不到tag时默认已对准
-                                if (ID in [1, 3, 5] and step == 1 and level == "start_moving"):
-                                    print(f"在tag{ID}处长时间找不到tag，默认已对准，继续下一步")
-                                    if ID == 1:
-                                        print('tag1默认对正完毕，直接前进跳过2号tag寻找三号tag')
-                                        ID = 3
-                                        box_go3(3)
-                                        BoxR_move2(6)
-                                    elif ID == 3:
-                                        print('tag3默认对正完毕，执行右移和前进寻找五号tag')
-                                        ID = 5
-                                        BoxR_move2(2)
-                                        box_go3(4)
-                                        BoxL_move2(5)
-                                    elif ID == 5:
-                                        print('tag5默认对正完毕，前进到大本营放下物块')
-                                        box_go3(3)
-                                        Box_Down(1)
-                                        R_turn2(3)
-                                        step = 2
-                                    search_pattern_step = 0
-                                    last_tag_seen_time = current_time  # 重置上次看到tag的时间
+                            # 特殊处理：在tag1、3、5处长时间找不到tag时默认已对准
+                            if (ID in [1, 3, 5] and step == 1 and level == "start_moving"):
+                                print(f"在tag{ID}处长时间找不到tag，默认已对准，继续下一步")
+                                if ID == 1:
+                                    print('tag1默认对正完毕，直接前进跳过2号tag寻找三号tag')
+                                    ID = 3
+                                    box_go3(3)
+                                    BoxR_move2(6)
+                                elif ID == 3:
+                                    print('tag3默认对正完毕，执行右移和前进寻找五号tag')
+                                    ID = 5
+                                    BoxR_move2(2)
+                                    box_go3(4)
+                                    BoxL_move2(5)
+                                elif ID == 5:
+                                    print('tag5默认对正完毕，前进到大本营放下物块')
+                                    box_go3(3)
+                                    Box_Down(1)
+                                    R_turn2(3)
+                                    step = 2
+                                search_pattern_step = 0
+                                last_tag_seen_time = current_time  # 重置上次看到tag的时间
 
 
                             else:
@@ -777,7 +782,7 @@ if __name__ == '__main__':
                             # 根据当前状态选择合适的动作
                             if (ID == 1 and level == "end_box"):
                                 print("继续右转寻找tag")
-                                BoxR_turn1(1)
+                                BoxR_turn2(1)
                             elif (ID in [1, 3, 5] and level == "start_moving") or (
                                     ID == 5 and step == 1):  # 修改：只处理1,3,5号tag
                                 print("微调位置寻找tag")
@@ -794,13 +799,13 @@ if __name__ == '__main__':
                                 search_pattern_step += 1
                             elif (ID == 5 and step == 2 and level == "start_moving"):
                                 print("右转寻找tag")
-                                R_turn1(1)
+                                R_turn2(1)
                             elif (ID in [6, 7]) or (ID == 5 and step == 2 and level == "reverse_moving"):
                                 print("微调位置寻找tag")
                                 if search_pattern_step % 2 == 0:
-                                    L_turn1(1)
+                                    L_turn2(1)
                                 else:
-                                    R_turn1(1)
+                                    R_turn2(1)
                                 search_pattern_step += 1
 
                     else:

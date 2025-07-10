@@ -30,19 +30,12 @@ last_tag_seen_time = time.time()
 search_pattern_step = 0
 max_alignment_attempts = 4  # 增加到4次
 current_alignment_attempts = 0
-
-# 新增：绿色块处理相关变量
-green_block_count = 0
-target_locked = False
-locked_target_x = None
-locked_target_y = None
-position_stable_count = 0
-last_stable_position = None
+box_alignment_attempts = 0
 
 # 不同色块的hsv范围 - 保持您提供的HSV范围
 color_range = {
-    'green': [(46, 133, 83), (58, 255, 157)],
-    'orange': [(9, 189, 104), (17, 255, 185)]
+    'green': [(40, 228, 89), (53, 255, 146)],
+    'orange': [(12, 246, 128), (19, 255, 185)]
 }
 
 
@@ -311,11 +304,9 @@ th2.setDaemon(True)
 th2.start()
 
 
-# 改进的查找方块函数 - 解决多个绿色块时的左右调整问题
+# 优化的查找方块函数 - 增加颜色优先级
 def find_box(img, color_name):
-    global chest_circle_x, chest_circle_y, green_block_count, target_locked, locked_target_x, locked_target_y
-    global position_stable_count, last_stable_position
-
+    global chest_circle_x, chest_circle_y
     if Chest_img is None:
         print('等待获取图像中...')
         time.sleep(0.3)
@@ -327,125 +318,124 @@ def find_box(img, color_name):
         box_img_hsv = cv2.cvtColor(box_img, cv2.COLOR_BGR2HSV)
         box_img = cv2.GaussianBlur(box_img_hsv, (3, 3), 0)
 
-        # 检测绿色块
-        green_mask = cv2.inRange(box_img, color_range['green'][0], color_range['green'][1])
-        green_mask_processed = cv2.dilate(cv2.erode(green_mask, None, iterations=2), np.ones((4, 4), np.uint8), iterations=2)
-        (green_contours, _) = cv2.findContours(green_mask_processed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-
-        # 统计绿色块数量
-        valid_green_contours = []
-        for cn in green_contours:
-            contour_area = math.fabs(cv2.contourArea(cn))
-            if contour_area > 300:  # 过滤掉太小的轮廓
-                valid_green_contours.append(cn)
-
-        green_block_count = len(valid_green_contours)
-        print(f"检测到 {green_block_count} 个绿色块")
+        # 检测所有颜色，但优先绿色
+        green_detected = False
+        orange_detected = False
 
         best_contour = None
         best_color = None
         largest_area = 0
 
-        # 多个绿色块处理策略
-        if green_block_count >= 3:
-            print("检测到3个或以上绿色块，启用目标锁定策略")
+        # 检测绿色
+        green_mask = cv2.inRange(box_img, color_range['green'][0], color_range['green'][1])
+        green_mask_processed = cv2.dilate(cv2.erode(green_mask, None, iterations=2), np.ones((4, 4), np.uint8),
+                                          iterations=2)
+        (green_contours, _) = cv2.findContours(green_mask_processed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-            if not target_locked:
-                # 第一次检测到多个绿色块，选择最中心的目标
-                print("选择最中心的绿色块作为目标")
-                center_x = img.shape[1] / 2  # 图像中心x坐标
-                min_distance_to_center = float('inf')
-
-                for cn in valid_green_contours:
-                    (block_x, block_y), _ = cv2.minEnclosingCircle(cn)
-                    distance_to_center = abs(block_x - center_x)
-
-                    if distance_to_center < min_distance_to_center:
-                        min_distance_to_center = distance_to_center
-                        best_contour = cn
-                        locked_target_x = block_x
-                        locked_target_y = block_y
-
-                target_locked = True
-                best_color = 'green'
-                print(f"锁定目标位置: x={locked_target_x}, y={locked_target_y}")
-
-            else:
-                # 已锁定目标，寻找与锁定位置最接近的绿色块
-                print("寻找与锁定目标最接近的绿色块")
-                min_distance_to_target = float('inf')
-
-                for cn in valid_green_contours:
-                    (block_x, block_y), _ = cv2.minEnclosingCircle(cn)
-                    distance_to_target = math.sqrt((block_x - locked_target_x)**2 + (block_y - locked_target_y)**2)
-
-                    if distance_to_target < min_distance_to_target:
-                        min_distance_to_target = distance_to_target
-                        best_contour = cn
-
-                best_color = 'green'
-
-        elif green_block_count > 0:
-            # 少于3个绿色块，选择最大的
-            print("绿色块数量少于3个，选择最大的绿色块")
-            target_locked = False  # 重置锁定状态
-
-            for cn in valid_green_contours:
+        if len(green_contours) > 0:
+            green_detected = True
+            for cn in green_contours:
                 contour_area = math.fabs(cv2.contourArea(cn))
                 if contour_area > largest_area:
                     largest_area = contour_area
                     best_contour = cn
                     best_color = 'green'
 
-        # 如果没有检测到绿色块，检测橙色块
-        if best_contour is None and (color_name == 'orange' or green_block_count == 0):
+        # 检测橙色（只有在没有检测到绿色或要求检测橙色时）
+        if color_name == 'orange' or not green_detected:
             orange_mask = cv2.inRange(box_img, color_range['orange'][0], color_range['orange'][1])
-            orange_mask_processed = cv2.dilate(cv2.erode(orange_mask, None, iterations=2), np.ones((4, 4), np.uint8), iterations=2)
+            orange_mask_processed = cv2.dilate(cv2.erode(orange_mask, None, iterations=2), np.ones((4, 4), np.uint8),
+                                               iterations=2)
             (orange_contours, _) = cv2.findContours(orange_mask_processed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
             if len(orange_contours) > 0:
+                orange_detected = True
+                # 如果没有绿色，或者橙色面积明显更大，则选择橙色
                 for cn in orange_contours:
                     contour_area = math.fabs(cv2.contourArea(cn))
-                    if contour_area > largest_area:
+                    if (not green_detected and contour_area > largest_area) or \
+                            (color_name == 'orange' and contour_area > largest_area):
                         largest_area = contour_area
                         best_contour = cn
                         best_color = 'orange'
+
+        # 优先级处理：如果同时检测到绿色和橙色，优先选择绿色
+        if green_detected and orange_detected and color_name != 'orange':
+            print("同时检测到绿色和橙色，优先选择绿色")
+            # 重新计算绿色的最大轮廓
+            best_contour = None
+            largest_area = 0
+            for cn in green_contours:
+                contour_area = math.fabs(cv2.contourArea(cn))
+                if contour_area > largest_area:
+                    largest_area = contour_area
+                    best_contour = cn
+                    best_color = 'green'
 
         if best_contour is not None:
             (chest_circle_x, chest_circle_y), chest_radius = cv2.minEnclosingCircle(best_contour)
             cv2.circle(img, (int(chest_circle_x), int(chest_circle_y)), int(chest_radius), (0, 0, 255))
             print(f'目标位置 x={chest_circle_x}, y={chest_circle_y}, 颜色={best_color}')
 
-            # 位置稳定性检测
-            current_position = (int(chest_circle_x), int(chest_circle_y))
-            if last_stable_position is not None:
-                position_diff = abs(current_position[0] - last_stable_position[0]) + abs(current_position[1] - last_stable_position[1])
-                if position_diff < 10:  # 位置变化小于10像素认为稳定
-                    position_stable_count += 1
-                else:
-                    position_stable_count = 0
-            else:
-                position_stable_count = 0
-
-            last_stable_position = current_position
-            print(f"位置稳定计数: {position_stable_count}")
-
             if Debug:
                 cv2.imshow("Box", img)
                 cv2.waitKey(2000)
         else:
             print('正在寻找目标')
-            target_locked = False  # 重置锁定状态
-            position_stable_count = 0
-
     except Exception as e:
         print(f"图像处理错误: {e}")
-        target_locked = False
 
 
-# 改进的搬箱子函数 - 解决多个绿色块时的左右调整问题
+# 搬箱子 - 改回最初第一版的简单逻辑
+# def goto_box():
+#     global level, ID
+#     if chest_circle_x is None:
+#         print('等待获取坐标中...')
+#         time.sleep(0.3)
+#         return
+#
+#     try:
+#         print(f"当前箱子坐标: x={chest_circle_x}, y={chest_circle_y}")
+#
+#         if chest_circle_x < 275:
+#             print("正在左侧移", chest_circle_x)
+#             safe_action("Left3move", wait_time=0.5)
+#         elif chest_circle_x < 295:
+#             print("正在左侧移", chest_circle_x)
+#             safe_action("Left02move", wait_time=0.5)
+#         elif chest_circle_x > 365:
+#             print("正在右侧移", chest_circle_x)
+#             safe_action("Right3move", wait_time=0.5)
+#         elif chest_circle_x > 345:
+#             print("正在右侧移", chest_circle_x)
+#             safe_action("Right02move", wait_time=0.5)
+#         else:
+#             if chest_circle_y < 300:
+#                 print("前进", chest_circle_y)
+#                 safe_action("FastForward1s", wait_time=0.5)
+#             elif chest_circle_y >= 380:
+#                 print("后退", chest_circle_y)
+#                 safe_action("Back1Run", wait_time=0.5)
+#             else:
+#                 print("开始抱箱子")
+#                 if safe_action("Forwalk01", wait_time=0.5):
+#                     if safe_action("FixedGrabCube", wait_time=0.5):
+#                         # if safe_action("LiftCubeUp", wait_time=0.5):  # 添加LiftCubeUp动作
+#                             level = "end_box"
+#                             box_go3(2)  # 抱着箱子前进两步
+#                             BoxL_move2(1)
+#                         #     print("成功抱起箱子")
+#                         # else:
+#                         #     print("举起箱子失败")
+#                     else:
+#                         print("抓取箱子失败")
+#                 else:
+#                     print("前进动作失败")
+#     except Exception as e:
+#         print(f"搬箱子过程出错: {e}")
+
 def goto_box():
-    global level, ID, target_locked, position_stable_count, green_block_count
+    global level, ID, box_alignment_attempts
     if chest_circle_x is None:
         print('等待获取坐标中...')
         time.sleep(0.3)
@@ -453,90 +443,65 @@ def goto_box():
 
     try:
         print(f"当前箱子坐标: x={chest_circle_x}, y={chest_circle_y}")
-        print(f"绿色块数量: {green_block_count}, 目标锁定: {target_locked}, 位置稳定计数: {position_stable_count}")
+        print(f"抱块对位尝试次数: {box_alignment_attempts}/{max_alignment_attempts}")
 
-        # 多个绿色块时的特殊处理
-        if green_block_count >= 3 and target_locked:
-            print("多绿色块模式：使用稳定性策略")
+        # 检查是否超过最大尝试次数
+        if box_alignment_attempts >= max_alignment_attempts:
+            print("抱块对位尝试次数达到上限，直接开始抱箱子")
+            if safe_action("Forwalk01", wait_time=0.5):
+                if safe_action("FixedGrabCube", wait_time=0.5):
+                    level = "end_box"
+                    box_go3(2)  # 抱着箱子前进两步
+                    BoxL_move2(1)
+                    box_alignment_attempts = 0  # 重置计数器
+                    print("强制抱箱完成")
+                else:
+                    print("强制抓取箱子失败")
+            else:
+                print("强制前进动作失败")
+            return
 
-            # 如果位置连续稳定3次以上，优先执行抓取
-            if position_stable_count >= 3:
-                print("目标位置稳定，直接尝试抓取")
-                # 放宽抓取条件
-                if (295 <= chest_circle_x <= 345) and (300 <= chest_circle_y <= 340):
-                    print("位置合适，开始抱箱子")
-                    if safe_action("Forwalk01", wait_time=0.5):
-                        if safe_action("FixedGrabCube", wait_time=0.5):
-                            level = "end_box"
-                            box_go3(2)
-                            target_locked = False  # 重置锁定状态
-                            return
-                        else:
-                            print("抓取箱子失败")
-                    else:
-                        print("前进动作失败")
-
-            # 使用更大的调整步长和更宽的容忍范围
-            if chest_circle_x < 285:  # 放宽左边界
-                print("大幅左侧移", chest_circle_x)
-                safe_action("Left3move", wait_time=0.5)
-            elif chest_circle_x > 355:  # 放宽右边界
-                print("大幅右侧移", chest_circle_x)
-                safe_action("Right3move", wait_time=0.5)
-            elif chest_circle_y < 290:  # 放宽前进条件
+        # 原有的对位逻辑
+        if chest_circle_x < 275:
+            print("正在左侧移", chest_circle_x)
+            safe_action("Left3move", wait_time=0.5)
+            box_alignment_attempts += 1  # 增加计数
+        elif chest_circle_x < 295:
+            print("正在左侧移", chest_circle_x)
+            safe_action("Left02move", wait_time=0.5)
+            box_alignment_attempts += 1  # 增加计数
+        elif chest_circle_x > 365:
+            print("正在右侧移", chest_circle_x)
+            safe_action("Right3move", wait_time=0.5)
+            box_alignment_attempts += 1  # 增加计数
+        elif chest_circle_x > 345:
+            print("正在右侧移", chest_circle_x)
+            safe_action("Right02move", wait_time=0.5)
+            box_alignment_attempts += 1  # 增加计数
+        else:
+            if chest_circle_y < 300:
                 print("前进", chest_circle_y)
                 safe_action("FastForward1s", wait_time=0.5)
-            elif chest_circle_y >= 350:  # 放宽后退条件
+                # 前后移动不计入侧移计数
+            elif chest_circle_y >= 380:
                 print("后退", chest_circle_y)
                 safe_action("Back1Run", wait_time=0.5)
+                # 前后移动不计入侧移计数
             else:
-                print("位置接近目标，尝试抓取")
+                print("开始抱箱子")
                 if safe_action("Forwalk01", wait_time=0.5):
                     if safe_action("FixedGrabCube", wait_time=0.5):
                         level = "end_box"
-                        box_go3(2)
-                        target_locked = False  # 重置锁定状态
+                        box_go3(2)  # 抱着箱子前进两步
+                        BoxL_move2(1)
+                        box_alignment_attempts = 0  # 重置计数器
+                        print("正常抱箱完成")
                     else:
                         print("抓取箱子失败")
                 else:
                     print("前进动作失败")
-
-        else:
-            # 原有的单个或少量绿色块处理逻辑
-            print("常规模式：使用精确定位")
-            if chest_circle_x < 275:
-                print("正在左侧移", chest_circle_x)
-                safe_action("Left3move", wait_time=0.5)
-            elif chest_circle_x < 295:
-                print("正在左侧移", chest_circle_x)
-                safe_action("Left02move", wait_time=0.5)
-            elif chest_circle_x > 365:
-                print("正在右侧移", chest_circle_x)
-                safe_action("Right3move", wait_time=0.5)
-            elif chest_circle_x > 345:
-                print("正在右侧移", chest_circle_x)
-                safe_action("Right02move", wait_time=0.5)
-            else:
-                if chest_circle_y < 300:
-                    print("前进", chest_circle_y)
-                    safe_action("FastForward1s", wait_time=0.5)
-                elif chest_circle_y >= 340:
-                    print("后退", chest_circle_y)
-                    safe_action("Back1Run", wait_time=0.5)
-                else:
-                    print("开始抱箱子")
-                    if safe_action("Forwalk01", wait_time=0.5):
-                        if safe_action("FixedGrabCube", wait_time=0.5):
-                            level = "end_box"
-                            box_go3(2)
-                        else:
-                            print("抓取箱子失败")
-                    else:
-                        print("前进动作失败")
-
     except Exception as e:
         print(f"搬箱子过程出错: {e}")
-        target_locked = False  # 出错时重置锁定状态
 
 
 # 智能搜索tag的函数
@@ -777,7 +742,37 @@ if __name__ == '__main__':
                         # 检查是否长时间没有看到tag（超过3秒）
                         if current_time - last_tag_seen_time > 3.0:
                             print("长时间未检测到tag，启动智能搜索")
-                            search_for_tag()
+                            # search_for_tag()
+
+                            if current_time - last_tag_seen_time > 3.0:
+                                print("长时间未检测到tag，启动智能搜索")
+
+                                # 特殊处理：在tag1、3、5处长时间找不到tag时默认已对准
+                                if (ID in [1, 3, 5] and step == 1 and level == "start_moving"):
+                                    print(f"在tag{ID}处长时间找不到tag，默认已对准，继续下一步")
+                                    if ID == 1:
+                                        print('tag1默认对正完毕，直接前进跳过2号tag寻找三号tag')
+                                        ID = 3
+                                        box_go3(3)
+                                        BoxR_move2(6)
+                                    elif ID == 3:
+                                        print('tag3默认对正完毕，执行右移和前进寻找五号tag')
+                                        ID = 5
+                                        BoxR_move2(2)
+                                        box_go3(4)
+                                        BoxL_move2(5)
+                                    elif ID == 5:
+                                        print('tag5默认对正完毕，前进到大本营放下物块')
+                                        box_go3(3)
+                                        Box_Down(1)
+                                        R_turn2(3)
+                                        step = 2
+                                    search_pattern_step = 0
+                                    last_tag_seen_time = current_time  # 重置上次看到tag的时间
+
+
+                            else:
+                                search_for_tag()
                         else:
                             # 根据当前状态选择合适的动作
                             if (ID == 1 and level == "end_box"):
@@ -826,8 +821,8 @@ if __name__ == '__main__':
                                         print('一号tag对正完毕，直接前进跳过2号tag寻找三号tag')
                                         ID = 3  # 直接跳到3号tag
                                         # 执行您要求的动作序列
-                                        box_go3(3)  # 执行4次box_go3
-                                        BoxR_move2(5)  # 执行5次最大右移
+                                        box_go3(4)  # 执行4次box_go3
+                                        BoxR_move2(6)  # 执行6次最大右移
                                 else:
                                     print("继续前进")
                                     box_go1(1)

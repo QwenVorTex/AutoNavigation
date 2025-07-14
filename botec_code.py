@@ -454,8 +454,8 @@ def goto_box():
             if safe_action("Forwalk01", wait_time=0.5):
                 if safe_action("FixedGrabCube", wait_time=0.5):
                     level = "end_box"
+                    BoxL_turn2(1)
                     box_go3(2)  # 抱着箱子前进两步
-                    BoxL_move2(1)
                     box_alignment_attempts = 0  # 重置计数器
                     print("强制抱箱完成")
                 else:
@@ -625,10 +625,10 @@ def turn_to_tag(dis_x, dis_y, theta, x_offset=0, y_offset=0, theta_offset=0,
             elif abs(theta_error) > theta_threshold:
                 if theta_error > 0:
                     print("精细左转", theta_error)
-                    BoxL_turn1(1)
+                    BoxL_turn2(1)
                 else:
                     print("精细右转", theta_error)
-                    BoxR_turn1(1)
+                    BoxR_turn2(1)
             # 侧向精调
             elif abs(y_error) > y_threshold:
                 if y_error > 0:
@@ -753,7 +753,9 @@ if __name__ == '__main__':
                             # search_for_tag()
 
                             # 特殊处理：在tag1、3、5处长时间找不到tag时默认已对准
-                            if (ID in [1, 3, 5] and step == 1 and level == "start_moving"):
+                            # if (ID in [1, 3, 5] and step == 1 and level == "start_moving"):
+                            if (ID in [1, 3, 5] and step == 1):
+
                                 print(f"在tag{ID}处长时间找不到tag，默认已对准，继续下一步")
                                 if ID == 1:
                                     print('tag1默认对正完毕，直接前进跳过2号tag寻找三号tag')
@@ -788,14 +790,14 @@ if __name__ == '__main__':
                                 print("微调位置寻找tag")
                                 if search_pattern_step % 2 == 0:
                                     if step == 1:
-                                        BoxL_turn1(1)
+                                        BoxL_turn2(1)
                                     else:
-                                        L_turn1(1)
+                                        L_turn2(1)
                                 else:
                                     if step == 1:
-                                        BoxR_turn1(1)
+                                        BoxR_turn2(1)
                                     else:
-                                        R_turn1(1)
+                                        R_turn2(1)
                                 search_pattern_step += 1
                             elif (ID == 5 and step == 2 and level == "start_moving"):
                                 print("右转寻找tag")
@@ -826,7 +828,7 @@ if __name__ == '__main__':
                                         print('一号tag对正完毕，直接前进跳过2号tag寻找三号tag')
                                         ID = 3  # 直接跳到3号tag
                                         # 执行您要求的动作序列
-                                        box_go3(4)  # 执行4次box_go3
+                                        box_go3(3)  # 执行3次box_go3
                                         BoxR_move2(6)  # 执行6次最大右移
                                 else:
                                     print("继续前进")

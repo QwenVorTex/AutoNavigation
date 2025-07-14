@@ -860,40 +860,40 @@ if __name__ == '__main__':
                                         step = 2
                                         search_pattern_step = 0
 
-                        elif step == 2:
-                            # 反方向行进 - 后面的不修改
-                            if marker[0] == 5:
-                                result = turn_to_tag(robot_tag_x, robot_tag_y, tag_yaw, 0.08, 0.0, 180)
-                                level = "reverse_moving"
-                                if result == True:
-                                    print('五号tag反向对正完毕，前进寻找六号tag')
-                                    ID += 1
-                                    go_fast2(1)
-                                    go_fast1(2)
-                            elif marker[0] == 6:
-                                if ID == 6:
-                                    result = turn_to_tag(robot_tag_x, robot_tag_y, tag_yaw, 0.05, -0.1, 0)
-                                    if result == True:
-                                        print('六号tag对正完毕，左移并前进寻找七号tag')
-                                        ID += 1
-                                        L_move2(4)
-                                        go_fast2(2)
-                                        go_fast1(1)
-
-                            elif marker[0] == 7:
-                                if ID == 7:
-                                    result = turn_to_tag(robot_tag_x, robot_tag_y, tag_yaw, 0.06, 0.10, 0)
-                                    if result == True:
-                                        print('七号tag对正完毕，右移寻找一号tag')
-                                        R_move2(5)
-                            elif marker[0] == 1:
-                                result = turn_to_tag(robot_tag_x, robot_tag_y, tag_yaw, 0.1, 0.0, 180)
-                                if result == True:
-                                    print('一号tag反向对正完毕，前进抓取新物块')
-                                    go_fast2(2)
-                                    ID = 0
-                                    level = "start_box"
-                                    search_pattern_step = 0
+                        # elif step == 2:
+                        #     # 反方向行进 - 后面的不修改
+                        #     if marker[0] == 5:
+                        #         result = turn_to_tag(robot_tag_x, robot_tag_y, tag_yaw, 0.08, 0.0, 180)
+                        #         level = "reverse_moving"
+                        #         if result == True:
+                        #             print('五号tag反向对正完毕，前进寻找六号tag')
+                        #             ID += 1
+                        #             go_fast2(1)
+                        #             go_fast1(2)
+                        #     elif marker[0] == 6:
+                        #         if ID == 6:
+                        #             result = turn_to_tag(robot_tag_x, robot_tag_y, tag_yaw, 0.05, -0.1, 0)
+                        #             if result == True:
+                        #                 print('六号tag对正完毕，左移并前进寻找七号tag')
+                        #                 ID += 1
+                        #                 L_move2(4)
+                        #                 go_fast2(2)
+                        #                 go_fast1(1)
+                        #
+                        #     elif marker[0] == 7:
+                        #         if ID == 7:
+                        #             result = turn_to_tag(robot_tag_x, robot_tag_y, tag_yaw, 0.06, 0.10, 0)
+                        #             if result == True:
+                        #                 print('七号tag对正完毕，右移寻找一号tag')
+                        #                 R_move2(5)
+                        #     elif marker[0] == 1:
+                        #         result = turn_to_tag(robot_tag_x, robot_tag_y, tag_yaw, 0.1, 0.0, 180)
+                        #         if result == True:
+                        #             print('一号tag反向对正完毕，前进抓取新物块')
+                        #             go_fast2(2)
+                        #             ID = 0
+                        #             level = "start_box"
+                        #             search_pattern_step = 0
 
                 time.sleep(0.2)  # 增加主循环的等待时间
 

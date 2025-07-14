@@ -70,6 +70,14 @@ def Box_Down(n):
             break
 
 
+# 摔倒动作
+def fall_down(n):
+    for i in range(0, n):
+        if not safe_action("FallDown", wait_time=0.5):
+            print("摔倒动作失败，跳过")
+            break
+
+
 # 后退
 # 慢慢抱着块退后
 def Box_Back(n):
@@ -625,10 +633,10 @@ def turn_to_tag(dis_x, dis_y, theta, x_offset=0, y_offset=0, theta_offset=0,
             elif abs(theta_error) > theta_threshold:
                 if theta_error > 0:
                     print("精细左转", theta_error)
-                    BoxL_turn2(1)
+                    BoxL_turn1(1)
                 else:
                     print("精细右转", theta_error)
-                    BoxR_turn2(1)
+                    BoxR_turn1(1)
             # 侧向精调
             elif abs(y_error) > y_threshold:
                 if y_error > 0:
@@ -721,7 +729,7 @@ if __name__ == '__main__':
             time.sleep(0.1)
 
         print('系统启动，开始执行任务')
-        go_fast2(1)
+        go_fast3(2)
 
         while not rospy.is_shutdown():
             try:
